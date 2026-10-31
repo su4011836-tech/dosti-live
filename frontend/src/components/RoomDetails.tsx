@@ -1,15 +1,18 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Mic, MicOff, Users, Settings, LogOut, MessageSquare, Gift, Plus } from 'lucide-react';
+import api from '../api/client';
 
-const mockRoom = {
-  id: "1",
-  name: "Desi Boyz Lounge",
-  host: "Rahul",
-  viewers: 1850,
-  tags: ["Chat", "Desi"],
-  gradient: "from-blue-600 to-indigo-800"
-};
+interface RoomData {
+  id: string;
+  name: string;
+  isVIP: boolean;
+  host: {
+    username: string;
+  };
+  viewers: number;
+  tags: string[];
+}
 
 const mockSeats = [
   { id: 1, user: "Rahul", isHost: true, isMuted: false, avatar: "bg-red-500" },
@@ -30,13 +33,44 @@ const mockChat = [
 
 const RoomDetails: React.FC = () => {
   const navigate = useNavigate();
-  useParams(); // Just reading to avoid unused var in mock
+  const { id } = useParams<{ id: string }>();
+  const [room, setRoom] = useState<RoomData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // In a real app, fetch room details based on `id`
-  const room = mockRoom;
+  useEffect(() => {
+    const fetchAndJoinRoom = async () => {
+      try {
+        if (!id) return;
+        const res = await api.get(`/rooms/${id}`);
+        setRoom(res.data);
+
+        // Try joining
+        await api.post(`/rooms/${id}/join`).catch(() => {});
+      } catch (err) {
+        console.error("Failed to load room details");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAndJoinRoom();
+
+    return () => {
+      if (id) {
+         api.post(`/rooms/${id}/leave`).catch(() => {});
+      }
+    };
+  }, [id]);
+
+  if (loading) {
+    return <div className="min-h-screen bg-dark flex items-center justify-center text-white">Loading room...</div>;
+  }
+
+  if (!room) {
+    return <div className="min-h-screen bg-dark flex items-center justify-center text-white">Room not found.</div>;
+  }
 
   return (
-    <div className={`min-h-screen bg-gradient-to-b ${room.gradient} flex flex-col relative`}>
+    <div className={`min-h-screen bg-gradient-to-b from-blue-600 to-indigo-800 flex flex-col relative`}>
       {/* Background Overlay for better contrast */}
       <div className="absolute inset-0 bg-black/40"></div>
 
@@ -49,7 +83,7 @@ const RoomDetails: React.FC = () => {
             </div>
             <div>
               <h1 className="text-sm font-bold text-white leading-tight">{room.name}</h1>
-              <p className="text-[10px] text-gray-300">Host: {room.host}</p>
+              <p className="text-[10px] text-gray-300">Host: {room.host.username}</p>
             </div>
             <button className="bg-primary hover:bg-primary-dark text-white px-3 py-1 rounded-full text-[10px] font-bold ml-2">
               Follow

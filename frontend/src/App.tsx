@@ -3,6 +3,7 @@ import { Home as HomeIcon, Mic, Gamepad2, MessageCircle, User } from 'lucide-rea
 import Splash from './components/Splash';
 import Home from './components/Home';
 import Rooms from './components/Rooms';
+import { AuthProvider } from './context/AuthContext';
 import Games from './components/Games';
 import Messages from './components/Messages';
 import Profile from './components/Profile';
@@ -14,6 +15,7 @@ import Admin from './components/Admin';
 
 function App() {
   return (
+    <AuthProvider>
     <Router>
       <div className="min-h-screen bg-dark-darker text-white font-sans">
         <Routes>
@@ -46,6 +48,7 @@ function App() {
         </Routes>
       </div>
     </Router>
+    </AuthProvider>
   );
 }
 

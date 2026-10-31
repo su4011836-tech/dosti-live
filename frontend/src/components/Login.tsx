@@ -1,13 +1,32 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mic2, Mail, Lock, ChevronLeft } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import api from '../api/client';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/home');
+    setError('');
+    setLoading(true);
+
+    try {
+      const res = await api.post('/auth/login', { email, password });
+      login(res.data.token, res.data.user);
+      navigate('/home');
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to login');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -27,12 +46,16 @@ const Login: React.FC = () => {
       </div>
 
       <form onSubmit={handleLogin} className="space-y-6 flex-1">
+        {error && <div className="text-red-500 text-center text-sm font-semibold">{error}</div>}
+
         <div className="space-y-4">
           <div className="relative">
             <Mail className="absolute left-4 top-3.5 text-gray-400" size={20} />
             <input
               type="email"
               placeholder="Email or Username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full bg-dark text-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary shadow-inner border border-gray-800"
             />
@@ -42,6 +65,8 @@ const Login: React.FC = () => {
             <input
               type="password"
               placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
               className="w-full bg-dark text-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary shadow-inner border border-gray-800"
             />
@@ -52,8 +77,12 @@ const Login: React.FC = () => {
           <a href="#" className="text-sm text-primary-light font-semibold hover:underline">Forgot Password?</a>
         </div>
 
-        <button type="submit" className="w-full bg-gradient-to-r from-primary to-secondary py-3.5 rounded-xl font-bold text-white shadow-lg shadow-primary/30 hover:opacity-90 transition">
-          Login
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-gradient-to-r from-primary to-secondary py-3.5 rounded-xl font-bold text-white shadow-lg shadow-primary/30 hover:opacity-90 transition disabled:opacity-50"
+        >
+          {loading ? 'Logging in...' : 'Login'}
         </button>
       </form>
 

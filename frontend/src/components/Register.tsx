@@ -1,13 +1,33 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mic2, Mail, Lock, User, ChevronLeft } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import api from '../api/client';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
-  const handleRegister = (e: React.FormEvent) => {
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/home');
+    setError('');
+    setLoading(true);
+
+    try {
+      const res = await api.post('/auth/register', { username, email, password });
+      login(res.data.token, res.data.user);
+      navigate('/home');
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to register');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -27,12 +47,15 @@ const Register: React.FC = () => {
       </div>
 
       <form onSubmit={handleRegister} className="space-y-6 flex-1">
+        {error && <div className="text-red-500 text-center text-sm font-semibold">{error}</div>}
         <div className="space-y-4">
           <div className="relative">
             <User className="absolute left-4 top-3.5 text-gray-400" size={20} />
             <input
               type="text"
               placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
               className="w-full bg-dark text-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary shadow-inner border border-gray-800"
             />
@@ -42,6 +65,8 @@ const Register: React.FC = () => {
             <input
               type="email"
               placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full bg-dark text-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary shadow-inner border border-gray-800"
             />
@@ -51,14 +76,20 @@ const Register: React.FC = () => {
             <input
               type="password"
               placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
               className="w-full bg-dark text-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary shadow-inner border border-gray-800"
             />
           </div>
         </div>
 
-        <button type="submit" className="w-full bg-gradient-to-r from-primary to-secondary py-3.5 rounded-xl font-bold text-white shadow-lg shadow-primary/30 hover:opacity-90 transition mt-8">
-          Sign Up
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-gradient-to-r from-primary to-secondary py-3.5 rounded-xl font-bold text-white shadow-lg shadow-primary/30 hover:opacity-90 transition mt-8 disabled:opacity-50"
+        >
+          {loading ? 'Signing up...' : 'Sign Up'}
         </button>
       </form>
 

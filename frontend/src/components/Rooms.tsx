@@ -1,18 +1,52 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Mic, Search, Shield, Plus, Crown } from 'lucide-react';
+import api from '../api/client';
 
 const mockCategories = ["All", "Music", "Chat", "Dating", "Games", "Poetry"];
 
-const mockRooms = [
-  { id: 1, name: "Desi Boyz Lounge", host: "Rahul", viewers: 1850, tags: ["Chat", "Desi"], isVIP: true, gradient: "from-blue-600 to-indigo-800" },
-  { id: 2, name: "Late Night Music 🎵", host: "DJ Shadow", viewers: 3200, tags: ["Music", "Vibes"], isVIP: false, gradient: "from-purple-600 to-pink-600" },
-  { id: 3, name: "Urdu Poetry Club", host: "Ayesha", viewers: 840, tags: ["Poetry", "Urdu"], isVIP: false, gradient: "from-rose-500 to-red-700" },
-  { id: 4, name: "Gossip & Fun", host: "King Khan", viewers: 2300, tags: ["Chat", "Fun"], isVIP: true, gradient: "from-teal-500 to-emerald-700" },
-  { id: 5, name: "Ludo Champions", host: "Winner", viewers: 150, tags: ["Games", "Ludo"], isVIP: false, gradient: "from-orange-500 to-amber-700" },
-  { id: 6, name: "Sad Songs 💔", host: "BrokenHeart", viewers: 920, tags: ["Music", "Sad"], isVIP: false, gradient: "from-slate-700 to-zinc-900" }
-];
+interface Room {
+  id: string;
+  name: string;
+  isVIP: boolean;
+  host: {
+    username: string;
+  };
+  viewers: number;
+  tags: string[];
+}
+
+const getGradient = (index: number) => {
+  const gradients = [
+    "from-blue-600 to-indigo-800",
+    "from-purple-600 to-pink-600",
+    "from-rose-500 to-red-700",
+    "from-teal-500 to-emerald-700",
+    "from-orange-500 to-amber-700",
+    "from-slate-700 to-zinc-900"
+  ];
+  return gradients[index % gradients.length];
+};
 
 const Rooms: React.FC = () => {
+  const navigate = useNavigate();
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRooms = async () => {
+      try {
+        const response = await api.get('/rooms');
+        setRooms(response.data);
+      } catch (error) {
+        console.error("Failed to fetch rooms", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRooms();
+  }, []);
+
   return (
     <div className="pb-24 pt-4 px-4 min-h-screen">
       <div className="flex justify-between items-center mb-6">
@@ -42,9 +76,18 @@ const Rooms: React.FC = () => {
         ))}
       </div>
 
+      {loading ? (
+        <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>
+      ) : rooms.length === 0 ? (
+        <div className="text-center text-gray-400 py-10">No rooms available. Create one!</div>
+      ) : (
       <div className="grid grid-cols-2 gap-4">
-        {mockRooms.map(room => (
-          <div key={room.id} className={`rounded-2xl p-4 bg-gradient-to-br ${room.gradient} shadow-lg relative overflow-hidden group cursor-pointer hover:scale-[1.02] transition-transform`}>
+        {rooms.map((room, index) => (
+          <div
+            key={room.id}
+            onClick={() => navigate(`/room/${room.id}`)}
+            className={`rounded-2xl p-4 bg-gradient-to-br ${getGradient(index)} shadow-lg relative overflow-hidden group cursor-pointer hover:scale-[1.02] transition-transform`}
+          >
 
             <div className="absolute top-2 right-2 bg-black/40 backdrop-blur-sm rounded-full px-2 py-1 flex items-center space-x-1.5">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
@@ -60,7 +103,7 @@ const Rooms: React.FC = () => {
             <div className="mt-8">
               <h3 className="font-bold text-white leading-tight mb-1">{room.name}</h3>
               <p className="text-xs text-white/80 flex items-center">
-                <Shield size={12} className="mr-1 opacity-70" /> {room.host}
+                <Shield size={12} className="mr-1 opacity-70" /> {room.host.username}
               </p>
             </div>
 
@@ -74,6 +117,7 @@ const Rooms: React.FC = () => {
           </div>
         ))}
       </div>
+      )}
 
       <div className="fixed bottom-24 right-6">
         <button className="w-14 h-14 bg-gradient-to-r from-primary to-secondary rounded-full shadow-lg flex items-center justify-center text-white hover:scale-110 transition-transform focus:outline-none">
