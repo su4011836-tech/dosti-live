@@ -127,7 +127,7 @@ router.post('/:id/leave', authenticateToken, async (req: AuthRequest, res: Respo
          return;
       }
 
-      // Ensure viewers don't go below 0
+      // Atomic decrement, ensuring it doesn't drop below 0 if somehow out of sync
       const currentRoom = await prisma.room.findUnique({ where: { id }});
       if (!currentRoom) {
           res.status(404).json({ error: 'Room not found' });
@@ -137,7 +137,7 @@ router.post('/:id/leave', authenticateToken, async (req: AuthRequest, res: Respo
       const room = await prisma.room.update({
         where: { id },
         data: {
-          viewers: Math.max(0, currentRoom.viewers - 1)
+          viewers: currentRoom.viewers > 0 ? { decrement: 1 } : 0
         }
       });
 

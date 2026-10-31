@@ -1,9 +1,26 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Coins, CreditCard, History, Gift, ArrowUpRight } from 'lucide-react';
+import api from '../api/client';
 
 const Wallet: React.FC = () => {
   const navigate = useNavigate();
+  const [balance, setBalance] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchWallet = async () => {
+      try {
+        const res = await api.get('/wallet');
+        setBalance(res.data.balance);
+      } catch (err) {
+        console.error("Failed to load wallet balance");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchWallet();
+  }, []);
 
   return (
     <div className="min-h-screen bg-dark-darker pb-24">
@@ -22,7 +39,9 @@ const Wallet: React.FC = () => {
             <p className="text-white/80 text-sm font-semibold mb-1">Total Balance</p>
             <div className="flex items-end space-x-2">
               <Coins size={36} className="text-yellow-200" />
-              <h2 className="text-4xl font-black text-white">12,450</h2>
+              <h2 className="text-4xl font-black text-white">
+                {loading ? '...' : balance.toLocaleString()}
+              </h2>
             </div>
           </div>
 

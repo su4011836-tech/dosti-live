@@ -1,7 +1,58 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Settings, Edit3, Shield, Star, Coins, Gift, CreditCard, LogOut, ChevronRight, User, History } from 'lucide-react';
+import api from '../api/client';
+import { useAuth } from '../context/AuthContext';
+
+interface ProfileData {
+  id: string;
+  username: string;
+  level: number;
+  isVIP: boolean;
+  coins: number;
+  wallet?: {
+    balance: number;
+  };
+  _count: {
+    rooms: number;
+    giftsSent: number;
+    giftsRecv: number;
+  }
+}
 
 const Profile: React.FC = () => {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await api.get('/users/profile');
+        setProfile(res.data);
+      } catch (err) {
+        console.error("Failed to load profile", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  if (loading) {
+     return <div className="min-h-screen flex items-center justify-center text-white">Loading profile...</div>;
+  }
+
+  if (!profile) {
+     return <div className="min-h-screen flex items-center justify-center text-white">Could not load profile.</div>;
+  }
+
   return (
     <div className="pb-24 pt-4 min-h-screen">
       <div className="px-4 flex justify-between items-center mb-6">
@@ -21,7 +72,7 @@ const Profile: React.FC = () => {
                 </div>
               </div>
               <div className="absolute -bottom-2 -right-2 bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full border-2 border-dark shadow-sm">
-                LVL 12
+                LVL {profile.level}
               </div>
             </div>
 
@@ -29,18 +80,18 @@ const Profile: React.FC = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <h2 className="text-xl font-bold text-white flex items-center">
-                    User123 <Shield size={14} className="ml-2 text-green-400" />
+                    {profile.username} {profile.isVIP && <Shield size={14} className="ml-2 text-green-400" />}
                   </h2>
-                  <p className="text-xs text-gray-400 mt-1">ID: 987654321</p>
+                  <p className="text-xs text-gray-400 mt-1 flex truncate w-32">ID: {profile.id.split('-')[0]}</p>
                 </div>
                 <button className="bg-white/10 p-2 rounded-full text-white hover:bg-white/20 transition">
                   <Edit3 size={16} />
                 </button>
               </div>
               <div className="mt-3 flex space-x-4 text-sm font-semibold">
-                <div className="flex flex-col"><span className="text-white">125</span><span className="text-xs text-gray-500 font-normal">Following</span></div>
-                <div className="flex flex-col"><span className="text-white">4.2k</span><span className="text-xs text-gray-500 font-normal">Followers</span></div>
-                <div className="flex flex-col"><span className="text-white">890</span><span className="text-xs text-gray-500 font-normal">Visitors</span></div>
+                <div className="flex flex-col"><span className="text-white">{profile._count.giftsSent}</span><span className="text-xs text-gray-500 font-normal">Sent</span></div>
+                <div className="flex flex-col"><span className="text-white">{profile._count.giftsRecv}</span><span className="text-xs text-gray-500 font-normal">Recv</span></div>
+                <div className="flex flex-col"><span className="text-white">{profile._count.rooms}</span><span className="text-xs text-gray-500 font-normal">Rooms</span></div>
               </div>
             </div>
           </div>
@@ -52,13 +103,13 @@ const Profile: React.FC = () => {
 
       <div className="px-4 mb-6">
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-dark rounded-2xl p-4 flex items-center space-x-3 shadow-md cursor-pointer hover:bg-dark-light transition">
+          <div onClick={() => navigate('/wallet')} className="bg-dark rounded-2xl p-4 flex items-center space-x-3 shadow-md cursor-pointer hover:bg-dark-light transition">
             <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
               <Coins size={20} className="text-yellow-500" />
             </div>
             <div>
-              <p className="text-xs text-gray-400">My Coins</p>
-              <h3 className="text-base font-bold text-white">12,450</h3>
+              <p className="text-xs text-gray-400">My Wallet</p>
+              <h3 className="text-base font-bold text-white">{profile.wallet?.balance || 0}</h3>
             </div>
           </div>
           <div className="bg-dark rounded-2xl p-4 flex items-center space-x-3 shadow-md cursor-pointer hover:bg-dark-light transition">
@@ -77,7 +128,7 @@ const Profile: React.FC = () => {
         <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-2">Services</h3>
 
         <div className="bg-dark rounded-2xl overflow-hidden shadow-sm">
-          <button className="w-full flex items-center justify-between p-4 hover:bg-dark-light transition group">
+          <button onClick={() => navigate('/wallet')} className="w-full flex items-center justify-between p-4 hover:bg-dark-light transition group">
             <div className="flex items-center space-x-4">
               <div className="bg-blue-500/20 p-2 rounded-lg text-blue-400"><CreditCard size={20} /></div>
               <span className="font-semibold text-sm">Wallet & Recharge</span>
@@ -108,7 +159,7 @@ const Profile: React.FC = () => {
         </div>
 
         <div className="bg-dark rounded-2xl overflow-hidden shadow-sm mt-4">
-          <button className="w-full flex items-center justify-between p-4 hover:bg-red-500/10 transition group">
+          <button onClick={handleLogout} className="w-full flex items-center justify-between p-4 hover:bg-red-500/10 transition group">
             <div className="flex items-center space-x-4">
               <div className="bg-red-500/20 p-2 rounded-lg text-red-500"><LogOut size={20} /></div>
               <span className="font-semibold text-sm text-red-500">Log Out</span>
