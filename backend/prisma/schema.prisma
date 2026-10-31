@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  level     Int      @default(1)
+  isVIP     Boolean  @default(false)
+  role      Role     @default(USER)
+  coins     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rooms     Room[]
+  messages  Message[]
+  giftsSent GiftTransaction[] @relation("Sender")
+  giftsRecv GiftTransaction[] @relation("Receiver")
+  wallet    Wallet?
+}
+
+enum Role {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+model Room {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  isVIP       Boolean  @default(false)
+  hostId      String
+  host        User     @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  viewers     Int      @default(0)
+  tags        String[]
+  createdAt   DateTime @default(now())
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  content   String
+  senderId  String
+  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model GiftTransaction {
+  id         String   @id @default(uuid())
+  senderId   String
+  receiverId String
+  amount     Int
+  giftName   String
+  sender     User     @relation("Sender", fields: [senderId], references: [id])
+  receiver   User     @relation("Receiver", fields: [receiverId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GameHistory {
+  id        String   @id @default(uuid())
+  gameName  String
+  userId    String
+  betAmount Int
+  wonAmount Int
+  createdAt DateTime @default(now())
+}
