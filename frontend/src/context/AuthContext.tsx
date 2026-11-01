@@ -8,7 +8,6 @@ interface User {
   level: number;
   isVIP: boolean;
   role: string;
-  coins: number;
 }
 
 interface AuthContextType {

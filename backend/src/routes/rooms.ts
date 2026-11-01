@@ -1,6 +1,7 @@
 import express from 'express';
 import type { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { AccessToken } from 'livekit-server-sdk';
 import { authenticateToken } from '../middleware/auth.js';
 import type { AuthRequest } from '../middleware/auth.js';
 
@@ -18,13 +19,21 @@ router.get('/', async (req: Request, res: Response) => {
             level: true,
             isVIP: true,
           }
+        },
+        _count: {
+          select: { participants: true }
         }
       },
       orderBy: {
         createdAt: 'desc'
       }
     });
-    res.json(rooms);
+    // Map _count.participants to viewers for backward compatibility with frontend
+    const mappedRooms = rooms.map((r: any) => ({
+      ...r,
+      viewers: r._count.participants
+    }));
+    res.json(mappedRooms);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch rooms' });
   }
@@ -75,6 +84,9 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
             level: true,
             isVIP: true,
           }
+        },
+        _count: {
+          select: { participants: true }
         }
       }
     });
@@ -84,13 +96,16 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    res.json(room);
+    res.json({
+        ...room,
+        viewers: (room as any)._count.participants
+    });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch room' });
   }
 });
 
-// Join a room (increment viewers)
+// Join a room (Create RoomParticipant and Generate LiveKit Token)
 router.post('/:id/join', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const id = req.params.id as string;
@@ -101,22 +116,62 @@ router.post('/:id/join', authenticateToken, async (req: AuthRequest, res: Respon
        return;
     }
 
-    const room = await prisma.room.update({
-      where: { id },
-      data: {
-        viewers: {
-          increment: 1
+    const room = await prisma.room.findUnique({
+      where: { id }
+    });
+
+    if (!room) {
+      res.status(404).json({ error: 'Room not found' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    // Upsert participant to avoid unique constraint failures on rejoin
+    await prisma.roomParticipant.upsert({
+      where: {
+        roomId_userId: {
+            roomId: id,
+            userId: userId
         }
+      },
+      update: { joinedAt: new Date() },
+      create: {
+        roomId: id,
+        userId: userId,
+        role: room.hostId === userId ? 'HOST' : 'LISTENER'
       }
     });
 
-    res.json({ message: 'Joined room successfully', room });
+    // Generate LiveKit Token
+    let liveKitToken = null;
+    const apiKey = process.env.LIVEKIT_API_KEY;
+    const apiSecret = process.env.LIVEKIT_API_SECRET;
+
+    if (apiKey && apiSecret) {
+      const at = new AccessToken(apiKey, apiSecret, {
+        identity: userId,
+        name: user?.username || 'Unknown',
+        ttl: '10m', // 10 minutes session for testing
+      });
+      at.addGrant({ roomJoin: true, room: id, canPublish: room.hostId === userId, canSubscribe: true });
+      liveKitToken = await at.toJwt();
+    }
+
+    res.json({
+      message: 'Joined room successfully',
+      liveKitToken,
+      liveKitUrl: process.env.LIVEKIT_URL || null
+    });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Failed to join room' });
   }
 });
 
-// Leave a room (decrement viewers)
+// Leave a room (Remove RoomParticipant)
 router.post('/:id/leave', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const id = req.params.id as string;
@@ -127,21 +182,14 @@ router.post('/:id/leave', authenticateToken, async (req: AuthRequest, res: Respo
          return;
       }
 
-      // Atomic decrement, ensuring it doesn't drop below 0 if somehow out of sync
-      const currentRoom = await prisma.room.findUnique({ where: { id }});
-      if (!currentRoom) {
-          res.status(404).json({ error: 'Room not found' });
-          return;
-      }
-
-      const room = await prisma.room.update({
-        where: { id },
-        data: {
-          viewers: currentRoom.viewers > 0 ? { decrement: 1 } : 0
-        }
+      await prisma.roomParticipant.deleteMany({
+          where: {
+              roomId: id,
+              userId: userId
+          }
       });
 
-      res.json({ message: 'Left room successfully', room });
+      res.json({ message: 'Left room successfully' });
     } catch (error) {
       res.status(500).json({ error: 'Failed to leave room' });
     }

@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, UserPlus, MoreVertical, MessageCircle, Users } from 'lucide-react';
+import api from '../api/client';
 
-const mockChats = [
-  { id: 1, name: "Ayesha", msg: "Hey, are you joining the room today?", time: "10:30 AM", unread: 2, online: true, avatar: "bg-pink-500" },
-  { id: 2, name: "Rahul", msg: "Let's play Ludo!", time: "Yesterday", unread: 0, online: false, avatar: "bg-blue-500" },
-  { id: 3, name: "DJ Shadow", msg: "Thanks for the gift bro", time: "Yesterday", unread: 0, online: true, avatar: "bg-purple-500" },
-  { id: 4, name: "Zara", msg: "Sent you a request", time: "Monday", unread: 1, online: false, avatar: "bg-rose-500" },
-  { id: 5, name: "System", msg: "You reached VIP Level 2!", time: "Sunday", unread: 0, online: true, avatar: "bg-yellow-500" }
-];
+interface Conversation {
+  user: {
+    id: string;
+    username: string;
+    isVIP: boolean;
+  };
+  lastMessage: string;
+  timestamp: string;
+  unread: number;
+}
 
 const mockRequests = [
   { id: 1, name: "Imran", mutual: 4, avatar: "bg-teal-500" },
@@ -16,6 +20,22 @@ const mockRequests = [
 
 const Messages: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'chats' | 'friends'>('chats');
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        const res = await api.get('/messages/conversations');
+        setConversations(res.data);
+      } catch (error) {
+        console.error("Failed to load conversations", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchConversations();
+  }, []);
 
   return (
     <div className="pb-24 pt-4 px-4 min-h-screen">
@@ -58,34 +78,40 @@ const Messages: React.FC = () => {
 
       {activeTab === 'chats' ? (
         <div className="space-y-4">
-          {mockChats.map(chat => (
-            <div key={chat.id} className="flex items-center space-x-4 p-3 rounded-2xl bg-dark hover:bg-dark-light transition cursor-pointer group">
-              <div className="relative">
-                <div className={`w-14 h-14 rounded-full ${chat.avatar} flex items-center justify-center text-xl font-bold text-white shadow-md`}>
-                  {chat.name.charAt(0)}
+          {loading ? (
+            <div className="text-center text-gray-500 py-4">Loading messages...</div>
+          ) : conversations.length === 0 ? (
+            <div className="text-center text-gray-500 py-4">No messages yet.</div>
+          ) : (
+            conversations.map(chat => (
+              <div key={chat.user.id} className="flex items-center space-x-4 p-3 rounded-2xl bg-dark hover:bg-dark-light transition cursor-pointer group">
+                <div className="relative">
+                  <div className={`w-14 h-14 rounded-full bg-primary flex items-center justify-center text-xl font-bold text-white shadow-md`}>
+                    {chat.user.username.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-gray-500 border-2 border-dark rounded-full"></div>
                 </div>
-                {chat.online && (
-                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-dark rounded-full"></div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-baseline mb-1">
-                  <h3 className="font-bold text-white truncate">{chat.name}</h3>
-                  <span className={`text-[10px] ${chat.unread > 0 ? 'text-primary-light font-bold' : 'text-gray-500'}`}>{chat.time}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <p className={`text-sm truncate ${chat.unread > 0 ? 'text-gray-200 font-semibold' : 'text-gray-500'}`}>
-                    {chat.msg}
-                  </p>
-                  {chat.unread > 0 && (
-                    <span className="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full ml-2">
-                      {chat.unread}
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-baseline mb-1">
+                    <h3 className="font-bold text-white truncate">{chat.user.username}</h3>
+                    <span className={`text-[10px] ${chat.unread > 0 ? 'text-primary-light font-bold' : 'text-gray-500'}`}>
+                      {new Date(chat.timestamp).toLocaleDateString()}
                     </span>
-                  )}
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className={`text-sm truncate ${chat.unread > 0 ? 'text-gray-200 font-semibold' : 'text-gray-500'}`}>
+                      {chat.lastMessage}
+                    </p>
+                    {chat.unread > 0 && (
+                      <span className="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full ml-2">
+                        {chat.unread}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       ) : (
         <div className="space-y-6">

@@ -35,7 +35,7 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
         password: hashedPassword,
         wallet: {
           create: {
-            balance: 500 // Demo starting balance
+            balance: 0 // Do not provide demo coins in production
           }
         }
       }
@@ -59,8 +59,7 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
             id: user.id,
             username: user.username,
             email: user.email,
-            role: user.role,
-            coins: user.coins
+            role: user.role
         }
     });
   } catch (error) {
@@ -106,8 +105,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
         id: user.id,
         username: user.username,
         email: user.email,
-        role: user.role,
-        coins: user.coins
+        role: user.role
       }
     });
   } catch (error) {
@@ -131,7 +129,6 @@ router.get('/me', authenticateToken, async (req: AuthRequest, res: Response): Pr
             username: true,
             email: true,
             role: true,
-            coins: true,
             level: true,
             isVIP: true
         }

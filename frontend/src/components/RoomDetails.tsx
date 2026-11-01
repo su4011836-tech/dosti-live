@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Mic, MicOff, Users, Settings, LogOut, MessageSquare, Gift, Plus } from 'lucide-react';
+import { LiveKitRoom, RoomAudioRenderer, useParticipants } from '@livekit/components-react';
+import '@livekit/components-styles';
 import api from '../api/client';
 
 interface RoomData {
@@ -14,17 +16,6 @@ interface RoomData {
   tags: string[];
 }
 
-const mockSeats = [
-  { id: 1, user: "Rahul", isHost: true, isMuted: false, avatar: "bg-red-500" },
-  { id: 2, user: "Ayesha", isHost: false, isMuted: true, avatar: "bg-pink-500" },
-  { id: 3, user: "Zara", isHost: false, isMuted: false, avatar: "bg-purple-500" },
-  { id: 4, user: null, isHost: false, isMuted: false, avatar: "" }, // empty seat
-  { id: 5, user: null, isHost: false, isMuted: false, avatar: "" },
-  { id: 6, user: null, isHost: false, isMuted: false, avatar: "" },
-  { id: 7, user: null, isHost: false, isMuted: false, avatar: "" },
-  { id: 8, user: null, isHost: false, isMuted: false, avatar: "" },
-];
-
 const mockChat = [
   { id: 1, user: "Ali", text: "Hello everyone!", color: "text-blue-400" },
   { id: 2, user: "Ayesha", text: "Hi Ali, welcome to the room.", color: "text-pink-400" },
@@ -35,6 +26,8 @@ const RoomDetails: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [room, setRoom] = useState<RoomData | null>(null);
+  const [liveKitToken, setLiveKitToken] = useState<string | null>(null);
+  const [liveKitUrl, setLiveKitUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,8 +37,14 @@ const RoomDetails: React.FC = () => {
         const res = await api.get(`/rooms/${id}`);
         setRoom(res.data);
 
-        // Try joining
-        await api.post(`/rooms/${id}/join`).catch(() => {});
+        // Join backend & get LiveKit token
+        const joinRes = await api.post(`/rooms/${id}/join`);
+        if (joinRes.data.liveKitToken && joinRes.data.liveKitUrl) {
+            setLiveKitToken(joinRes.data.liveKitToken);
+            setLiveKitUrl(joinRes.data.liveKitUrl);
+        } else {
+            // For environments without LiveKit keys, we'll keep variables null to show the placeholder warning.
+        }
       } catch (err) {
         console.error("Failed to load room details");
       } finally {
@@ -113,35 +112,25 @@ const RoomDetails: React.FC = () => {
           ))}
         </div>
 
-        {/* Seats Grid */}
-        <div className="px-6 mb-auto">
-          <div className="grid grid-cols-4 gap-y-6 gap-x-4">
-            {mockSeats.map(seat => (
-              <div key={seat.id} className="flex flex-col items-center">
-                <div className={`relative w-14 h-14 rounded-full flex items-center justify-center ${seat.user ? seat.avatar : 'bg-black/20 border border-white/10'} shadow-lg cursor-pointer hover:scale-105 transition`}>
-                  {seat.user ? (
-                    <span className="text-xl font-bold text-white">{seat.user.charAt(0)}</span>
-                  ) : (
-                    <Plus size={20} className="text-white/30" />
-                  )}
-
-                  {seat.isHost && (
-                    <div className="absolute -bottom-2 bg-yellow-500 text-black text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-dark">
-                      Host
-                    </div>
-                  )}
-                  {seat.isMuted && seat.user && (
-                    <div className="absolute -top-1 -right-1 bg-dark rounded-full p-0.5">
-                      <MicOff size={12} className="text-red-400" />
-                    </div>
-                  )}
+        {/* LiveKit Integrated Area */}
+        <div className="px-6 mb-auto flex-1">
+            {liveKitToken && liveKitUrl ? (
+                <LiveKitRoom
+                    token={liveKitToken}
+                    serverUrl={liveKitUrl}
+                    connect={true}
+                    className="h-full flex flex-col"
+                >
+                    <LiveKitParticipantsGrid />
+                    <RoomAudioRenderer />
+                </LiveKitRoom>
+            ) : (
+                <div className="bg-black/30 rounded-2xl p-6 text-center border border-white/10 mt-10">
+                    <Settings size={32} className="mx-auto text-yellow-500 mb-3" />
+                    <h3 className="font-bold text-white mb-2">LiveKit Config Required</h3>
+                    <p className="text-xs text-gray-400">Audio features are currently disabled. Please add LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET to the backend environment variables.</p>
                 </div>
-                <span className="text-[10px] text-white mt-2 truncate w-16 text-center">
-                  {seat.user || `Seat ${seat.id}`}
-                </span>
-              </div>
-            ))}
-          </div>
+            )}
         </div>
 
         {/* Chat Area */}
@@ -176,6 +165,43 @@ const RoomDetails: React.FC = () => {
       </div>
     </div>
   );
+};
+
+
+// Sub-component to render LiveKit participants
+const LiveKitParticipantsGrid: React.FC = () => {
+    const participants = useParticipants();
+
+    // Fill remaining spots with empty seats up to 8
+    const seats = Array.from({ length: 8 }).map((_, i) => participants[i] || null);
+
+    return (
+        <div className="grid grid-cols-4 gap-y-6 gap-x-4 mt-6">
+            {seats.map((p, idx) => (
+                <div key={p ? p.identity : `empty-${idx}`} className="flex flex-col items-center">
+                    <div className={`relative w-14 h-14 rounded-full flex items-center justify-center ${p ? 'bg-primary' : 'bg-black/20 border border-white/10'} shadow-lg cursor-pointer hover:scale-105 transition overflow-hidden`}>
+                        {p ? (
+                            <span className="text-xl font-bold text-white uppercase">{p.name?.charAt(0) || 'U'}</span>
+                        ) : (
+                            <Plus size={20} className="text-white/30" />
+                        )}
+
+                        {p && !p.isSpeaking && !p.isMicrophoneEnabled && (
+                            <div className="absolute -top-1 -right-1 bg-dark rounded-full p-0.5">
+                                <MicOff size={12} className="text-red-400" />
+                            </div>
+                        )}
+                        {p && p.isSpeaking && (
+                             <div className="absolute inset-0 rounded-full border-2 border-green-400 animate-pulse"></div>
+                        )}
+                    </div>
+                    <span className="text-[10px] text-white mt-2 truncate w-16 text-center">
+                        {p ? p.name : `Seat ${idx + 1}`}
+                    </span>
+                </div>
+            ))}
+        </div>
+    );
 };
 
 export default RoomDetails;

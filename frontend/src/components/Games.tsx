@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Coins, Gift, ChevronRight, Trophy, Users } from 'lucide-react';
+import api from '../api/client';
 
 const mockGames = [
   { id: 1, name: "Lucky Spin", desc: "Win up to 10k coins", icon: "🎡", color: "bg-purple-500", players: 1250 },
@@ -11,6 +12,25 @@ const mockGames = [
 ];
 
 const Games: React.FC = () => {
+  const [spinResult, setSpinResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSpin = async () => {
+      setError('');
+      setLoading(true);
+      try {
+          // Hardcoded 50 coin bet for testing the endpoint
+          const res = await api.post('/games/spin', { betAmount: 50 });
+          setSpinResult(res.data.result);
+          // In a full implementation, you'd trigger a context refresh here to update the balance
+      } catch (err: any) {
+          setError(err.response?.data?.error || 'Failed to spin');
+      } finally {
+          setLoading(false);
+      }
+  };
+
   return (
     <div className="pb-24 pt-4 px-4 min-h-screen">
       <div className="flex justify-between items-center mb-6">
@@ -21,16 +41,33 @@ const Games: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-gradient-to-r from-secondary-dark to-primary-dark rounded-2xl p-5 mb-8 shadow-lg relative overflow-hidden flex items-center justify-between">
-        <div className="z-10">
-          <h2 className="text-lg font-bold text-white flex items-center">
-            <Gift size={20} className="mr-2 text-pink-300" /> Daily Free Spin!
-          </h2>
-          <p className="text-sm text-gray-200 mt-1">Claim your daily reward now</p>
+      <div className="bg-gradient-to-r from-secondary-dark to-primary-dark rounded-2xl p-5 mb-4 shadow-lg relative overflow-hidden">
+        <div className="flex items-center justify-between relative z-10">
+            <div>
+            <h2 className="text-lg font-bold text-white flex items-center">
+                <Gift size={20} className="mr-2 text-pink-300" /> Lucky Spin
+            </h2>
+            <p className="text-sm text-gray-200 mt-1">Cost: 50 coins to spin</p>
+            </div>
+            <button
+              onClick={handleSpin}
+              disabled={loading}
+              className="bg-white text-secondary-dark px-4 py-2 rounded-full font-bold shadow-md hover:bg-gray-100 transition text-sm disabled:opacity-50"
+            >
+            {loading ? 'Spinning...' : 'Spin!'}
+            </button>
         </div>
-        <button className="z-10 bg-white text-secondary-dark px-4 py-2 rounded-full font-bold shadow-md hover:bg-gray-100 transition text-sm">
-          Claim
-        </button>
+
+        {error && <div className="mt-2 text-red-300 text-xs font-bold relative z-10">{error}</div>}
+        {spinResult && (
+            <div className="mt-3 bg-black/30 p-2 rounded-xl text-center text-sm font-bold relative z-10">
+                {spinResult.wonAmount > 0
+                    ? <span className="text-green-400">You won {spinResult.wonAmount} coins! ({spinResult.multiplier}x)</span>
+                    : <span className="text-gray-400">Better luck next time!</span>
+                }
+            </div>
+        )}
+
         <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl"></div>
       </div>
 

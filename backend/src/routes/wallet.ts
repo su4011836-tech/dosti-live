@@ -61,21 +61,10 @@ router.post('/gift', authenticateToken, async (req: AuthRequest, res: Response):
                 data: { balance: { decrement: amount } }
             });
 
-            // Deduct coins from user model as well for cache/sync if needed
-            await tx.user.update({
-                where: { id: senderId },
-                data: { coins: { decrement: amount } }
-            });
-
             // Add to receiver
             await tx.wallet.update({
                 where: { userId: receiverId },
                 data: { balance: { increment: amount } }
-            });
-
-            await tx.user.update({
-                where: { id: receiverId },
-                data: { coins: { increment: amount } }
             });
 
             // Record transaction

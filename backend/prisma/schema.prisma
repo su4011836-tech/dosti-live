@@ -15,15 +15,52 @@ model User {
   level     Int      @default(1)
   isVIP     Boolean  @default(false)
   role      Role     @default(USER)
-  coins     Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   rooms     Room[]
-  messages  Message[]
+  participatingRooms RoomParticipant[]
+  messagesSent Message[] @relation("MessageSender")
+  messagesRecv Message[] @relation("MessageReceiver")
   giftsSent GiftTransaction[] @relation("Sender")
   giftsRecv GiftTransaction[] @relation("Receiver")
   wallet    Wallet?
+
+  friends       Friend[] @relation("UserFriend")
+  friendOf      Friend[] @relation("FriendUser")
+  friendRequestsSent FriendRequest[] @relation("RequestSender")
+  friendRequestsRecv FriendRequest[] @relation("RequestReceiver")
+}
+
+model Friend {
+  id        String   @id @default(uuid())
+  userId    String
+  friendId  String
+  createdAt DateTime @default(now())
+
+  user      User     @relation("UserFriend", fields: [userId], references: [id], onDelete: Cascade)
+  friend    User     @relation("FriendUser", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
+}
+
+model FriendRequest {
+  id         String   @id @default(uuid())
+  senderId   String
+  receiverId String
+  status     RequestStatus @default(PENDING)
+  createdAt  DateTime @default(now())
+
+  sender     User     @relation("RequestSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("RequestReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }
 
 enum Role {
@@ -39,17 +76,43 @@ model Room {
   isVIP       Boolean  @default(false)
   hostId      String
   host        User     @relation(fields: [hostId], references: [id], onDelete: Cascade)
-  viewers     Int      @default(0)
   tags        String[]
   createdAt   DateTime @default(now())
+
+  participants RoomParticipant[]
+}
+
+model RoomParticipant {
+  id        String   @id @default(uuid())
+  roomId    String
+  userId    String
+  role      RoomRole @default(LISTENER)
+  isMuted   Boolean  @default(false)
+  joinedAt  DateTime @default(now())
+
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+}
+
+enum RoomRole {
+  HOST
+  COHOST
+  SPEAKER
+  LISTENER
 }
 
 model Message {
-  id        String   @id @default(uuid())
-  content   String
-  senderId  String
-  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  content    String
+  senderId   String
+  receiverId String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  sender     User     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
 }
 
 model GiftTransaction {

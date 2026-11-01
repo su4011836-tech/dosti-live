@@ -23,7 +23,6 @@ router.get('/profile', authenticateToken, async (req: AuthRequest, res: Response
             email: true,
             level: true,
             isVIP: true,
-            coins: true,
             createdAt: true,
             wallet: {
                 select: {

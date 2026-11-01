@@ -1,16 +1,60 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldAlert, Users, Mic, Coins, TrendingUp, Settings, AlertTriangle, Activity } from 'lucide-react';
+import api from '../api/client';
+import { useAuth } from '../context/AuthContext';
 
-const statCards = [
-  { id: 1, label: "Total Users", value: "24.5k", icon: Users, color: "text-blue-500", bg: "bg-blue-500/20" },
-  { id: 2, label: "Active Rooms", value: "156", icon: Mic, color: "text-green-500", bg: "bg-green-500/20" },
-  { id: 3, label: "Total Revenue", value: "1.2M", icon: Coins, color: "text-yellow-500", bg: "bg-yellow-500/20" },
-  { id: 4, label: "Reports", value: "12", icon: AlertTriangle, color: "text-red-500", bg: "bg-red-500/20" },
-];
+interface AdminStats {
+  totalUsers: number;
+  activeRooms: number;
+  totalRevenue: number;
+  reportsCount: number;
+}
 
 const Admin: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (user && user.role !== 'ADMIN') {
+        setError('Access Denied. You do not have admin privileges.');
+        return;
+    }
+
+    const fetchStats = async () => {
+      try {
+        const res = await api.get('/admin/stats');
+        setStats(res.data);
+      } catch (err: any) {
+        setError(err.response?.data?.error || 'Failed to load stats');
+      }
+    };
+    if (user?.role === 'ADMIN') {
+        fetchStats();
+    }
+  }, [user]);
+
+  if (error) {
+    return (
+        <div className="min-h-screen bg-[#0f172a] text-white flex flex-col items-center justify-center p-6">
+            <ShieldAlert size={64} className="text-red-500 mb-4" />
+            <h1 className="text-xl font-bold text-center mb-4">{error}</h1>
+            <button onClick={() => navigate('/home')} className="bg-slate-700 hover:bg-slate-600 px-6 py-2 rounded-full transition">
+              Return Home
+            </button>
+        </div>
+    );
+  }
+
+  const statCards = stats ? [
+    { id: 1, label: "Total Users", value: stats.totalUsers.toLocaleString(), icon: Users, color: "text-blue-500", bg: "bg-blue-500/20" },
+    { id: 2, label: "Active Rooms", value: stats.activeRooms.toLocaleString(), icon: Mic, color: "text-green-500", bg: "bg-green-500/20" },
+    { id: 3, label: "Total Revenue", value: stats.totalRevenue.toLocaleString(), icon: Coins, color: "text-yellow-500", bg: "bg-yellow-500/20" },
+    { id: 4, label: "Reports", value: stats.reportsCount.toString(), icon: AlertTriangle, color: "text-red-500", bg: "bg-red-500/20" },
+  ] : [];
+
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white">
