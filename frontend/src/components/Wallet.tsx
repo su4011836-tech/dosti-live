@@ -47,7 +47,7 @@ const Wallet: React.FC = () => {
 
           {/* Action Buttons */}
           <div className="mt-8 flex space-x-4 relative z-10">
-            <button className="flex-1 bg-white text-orange-600 py-3 rounded-xl font-bold flex items-center justify-center space-x-2 hover:bg-gray-50 transition shadow-md">
+            <button onClick={() => navigate('/recharge')} className="flex-1 bg-white text-orange-600 py-3 rounded-xl font-bold flex items-center justify-center space-x-2 hover:bg-gray-50 transition shadow-md">
               <CreditCard size={18} />
               <span>Recharge</span>
             </button>

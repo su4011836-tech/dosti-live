@@ -9,7 +9,8 @@
 - **Messaging:** Upgraded the static `Messages.tsx` to pull real user-to-user conversation history, unread counts, and timestamps from the backend `messages` table.
 - **Wallet & Gifts:** Implemented atomic database transactions for safe gift purchasing. The Wallet UI live-loads real coin balances.
 - **Games:** Upgraded `Games.tsx` to hit a real backend endpoint for "Lucky Spin" mechanics that rely on server-side randomized multipliers and atomic balance adjustments instead of trusting client input.
-- **Admin Panel:** Built a secure `/api/admin/stats` endpoint protected by `requireAdmin` middleware. The `Admin.tsx` UI safely requests this data and presents errors if a non-admin attempts access.
+- **Admin Panel:** Built a secure `/api/admin/stats` endpoint protected by `requireAdmin` middleware. The `Admin.tsx` UI safely requests this data and presents errors if a non-admin attempts access. Also implemented a comprehensive Admin Payments dashboard to view, approve, and reject manual payments, alongside a payment settings configuration page.
+- **Manual Payment Flow:** Added `multer` for secure image uploads. Built the `/recharge` UI for users to upload proof of JazzCash/Easypaisa transactions. Added atomic transaction approval on the backend to prevent duplicate coin credits. Generated `PAYMENT_SETUP_GUIDE.md` and `GOOGLE_PLAY_BILLING_GUIDE.md`.
 
 ## 2. Features Tested
 - Compilation of the React application via `npm run build`.

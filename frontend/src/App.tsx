@@ -11,6 +11,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import RoomDetails from './components/RoomDetails';
 import Wallet from './components/Wallet';
+import Recharge from './components/Recharge';
 import Admin from './components/Admin';
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/room/:id" element={<RoomDetails />} />
           <Route path="/wallet" element={<Wallet />} />
+          <Route path="/recharge" element={<Recharge />} />
 
           {/* Admin */}
           <Route path="/admin" element={<Admin />} />
@@ -43,6 +45,7 @@ function App() {
           <Route path="/login" element={null} />
           <Route path="/register" element={null} />
           <Route path="/room/:id" element={null} />
+          <Route path="/recharge" element={null} />
           <Route path="/admin" element={null} />
           <Route path="*" element={<BottomNav />} />
         </Routes>
